@@ -56,6 +56,7 @@ pub mod process {
     // Implement std::error::Error for MyError
     impl std::error::Error for ProcessError {}
 
+    #[derive(Debug)]
     pub struct Proc {
         pid: u32,
         name: String,
