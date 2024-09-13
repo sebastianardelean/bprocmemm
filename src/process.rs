@@ -1,7 +1,6 @@
 pub mod process {
 
     use std::fmt;
-    use std::io;
 
     #[cfg(target_os = "linux")]
     use crate::process_linux::*;
@@ -56,7 +55,7 @@ pub mod process {
     // Implement std::error::Error for MyError
     impl std::error::Error for ProcessError {}
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     pub struct Proc {
         pid: u32,
         name: String,
