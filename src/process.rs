@@ -3,6 +3,9 @@ pub mod process {
     use std::fmt;
 
     #[cfg(target_os = "linux")]
+    use std::io;
+
+    #[cfg(target_os = "linux")]
     use crate::process_linux::*;
 
     #[cfg(target_os = "windows")]
