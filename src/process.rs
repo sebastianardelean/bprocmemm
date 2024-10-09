@@ -61,9 +61,38 @@ pub mod process {
         handle: HANDLE,
     }
 
+    impl Proc {
+        pub fn new(pid:u32) -> Proc {
+            #[cfg(target_os = "linux")]
+            {
+                Proc {
+                    pid: pid,
+                    name: process_linux::get_process(pid as i32),
+                    handle: pid as u64,
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                let (name, handle) = process_windows::get_process(pid);
+                Proc {
+                    pid: pid,
+                    name: name,
+                    handle: handle,
+                }
+            }
+        }
+    }
+
+    impl Drop for Proc {
+        fn drop(&mut self) {
+            #[cfg(target_os="windows")]
+            {
+                process_windows::close_handler(self.Handle);
+            }
+        }
+    }
+
     pub trait Process {
-        fn open(&self, pid: u32) -> Proc;
-        fn close(&self);
         fn get_pid(&self) -> u32;
         fn get_name(&self) -> String;
         fn read_memory_regions(&self) -> Vec<MemoryRegion>;
@@ -85,32 +114,6 @@ pub mod process {
     }
 
     impl Process for Proc {
-        fn open(&self, pid: u32) -> Proc {
-            #[cfg(target_os = "linux")]
-            {
-                Proc {
-                    pid: pid,
-                    name: process_linux::get_process(pid as i32),
-                    handle: pid as u64,
-                }
-            }
-            #[cfg(target_os = "windows")]
-            {
-                let (name, handle) = process_windows::get_process(pid);
-                Proc {
-                    pid: pid,
-                    name: name,
-                    handle: handle,
-                }
-            }
-        }
-
-        fn close(&self) {
-            #[cfg(target_os = "windows")]
-            {
-                process_windows::close_handler(self.handle);
-            }
-        }
 
         fn get_pid(&self) -> u32 {
             #[cfg(target_os = "linux")]
