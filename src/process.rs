@@ -87,7 +87,7 @@ pub mod process {
         fn drop(&mut self) {
             #[cfg(target_os="windows")]
             {
-                process_windows::close_handler(self.Handle);
+                process_windows::close_handler(self.handle);
             }
         }
     }
