@@ -243,11 +243,11 @@ pub mod process_windows {
         if result.is_null() {
             return Err(windows::core::Error::from_win32().into());
         } else {
-            Ok(MemoryRegion::new(
-                result as usize,
-                size,
-                convert_ppf_to_string(PAGE_EXECUTE_READWRITE),
-            ))
+            Ok(MemoryRegion {
+                address: result as usize,
+                size: size,
+                permissions: convert_ppf_to_string(PAGE_EXECUTE_READWRITE),
+            })
         }
     }
 
