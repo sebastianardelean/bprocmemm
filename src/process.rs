@@ -17,6 +17,10 @@ pub mod process {
     #[cfg(target_os = "linux")]
     pub type HANDLE = u64; // Stub for Linux
 
+    pub trait Show {
+        fn show(&self) -> String;
+    }
+
     #[derive(Clone, Debug)]
     pub struct MemoryRegion {
         pub address: usize,
@@ -24,16 +28,8 @@ pub mod process {
         pub permissions: String,
     }
 
-    impl MemoryRegion {
-        pub fn new(address: usize, size: usize, permissions: String) -> MemoryRegion {
-            MemoryRegion {
-                address,
-                size,
-                permissions,
-            }
-        }
-
-        pub fn show_memory_regions(&self) -> String {
+    impl Show for MemoryRegion {
+        fn show(&self) -> String {
             format!(
                 "Base address: {:#x} Size: {} Permission: {}",
                 self.address, self.size, self.permissions
@@ -65,17 +61,31 @@ pub mod process {
         handle: HANDLE,
     }
 
-    impl Drop for Proc {
-        fn drop(&mut self) {
-            #[cfg(target_os = "windows")]
-            {
-                process_windows::close_handler(self.handle);
-            }
-        }
+    pub trait Process {
+        fn open(&self, pid: u32) -> Proc;
+        fn close(&self);
+        fn get_pid(&self) -> u32;
+        fn get_name(&self) -> String;
+        fn read_memory_regions(&self) -> Vec<MemoryRegion>;
+        fn read_memory_region(&self, memory_reg: MemoryRegion) -> Result<Vec<u8>, std::io::Error>;
+        fn read_address(&self, address: usize, size: usize) -> Result<Vec<u8>, std::io::Error>;
+        fn write_region(&self, memory_reg: MemoryRegion, data: &[u8])
+            -> Result<(), std::io::Error>;
+        fn write_address(&self, address: usize, data: &[u8]) -> Result<(), std::io::Error>;
+        fn allocate_memory(
+            &self,
+            address: usize,
+            size: usize,
+        ) -> Result<MemoryRegion, std::io::Error>;
+        fn set_protection(
+            &self,
+            memory_reg: MemoryRegion,
+            protection_string: String,
+        ) -> Result<(), std::io::Error>;
     }
 
-    impl Proc {
-        pub fn new(pid: u32) -> Proc {
+    impl Process for Proc {
+        fn open(&self, pid: u32) -> Proc {
             #[cfg(target_os = "linux")]
             {
                 Proc {
@@ -95,7 +105,14 @@ pub mod process {
             }
         }
 
-        pub fn get_pid(&self) -> u32 {
+        fn close(&self) {
+            #[cfg(target_os = "windows")]
+            {
+                process_windows::close_handler(self.handle);
+            }
+        }
+
+        fn get_pid(&self) -> u32 {
             #[cfg(target_os = "linux")]
             {
                 assert!(self.pid as u64 == self.handle);
@@ -103,11 +120,11 @@ pub mod process {
             self.pid
         }
 
-        pub fn get_name(&self) -> String {
+        fn get_name(&self) -> String {
             self.name.clone()
         }
 
-        pub fn read_memory_regions(&self) -> Vec<MemoryRegion> {
+        fn read_memory_regions(&self) -> Vec<MemoryRegion> {
             #[cfg(target_os = "linux")]
             {
                 process_linux::read_memory_regions(self.pid as i32)
@@ -118,10 +135,7 @@ pub mod process {
             }
         }
 
-        pub fn read_memory_region(
-            &self,
-            memory_reg: MemoryRegion,
-        ) -> Result<Vec<u8>, std::io::Error> {
+        fn read_memory_region(&self, memory_reg: MemoryRegion) -> Result<Vec<u8>, std::io::Error> {
             #[cfg(target_os = "linux")]
             {
                 process_linux::read_memory_region(self.pid as i32, memory_reg)
@@ -132,7 +146,7 @@ pub mod process {
             }
         }
 
-        pub fn read_address(&self, address: usize, size: usize) -> Result<Vec<u8>, std::io::Error> {
+        fn read_address(&self, address: usize, size: usize) -> Result<Vec<u8>, std::io::Error> {
             #[cfg(target_os = "linux")]
             {
                 process_linux::read_address(self.pid as i32, address, size)
@@ -143,7 +157,7 @@ pub mod process {
             }
         }
 
-        pub fn write_region(
+        fn write_region(
             &self,
             memory_reg: MemoryRegion,
             data: &[u8],
@@ -160,7 +174,7 @@ pub mod process {
             }
         }
 
-        pub fn write_address(&self, address: usize, data: &[u8]) -> Result<(), std::io::Error> {
+        fn write_address(&self, address: usize, data: &[u8]) -> Result<(), std::io::Error> {
             #[cfg(target_os = "linux")]
             {
                 process_linux::write_address(self.pid as i32, address, data)
@@ -170,7 +184,7 @@ pub mod process {
                 process_windows::write_address(self.handle, address, data)
             }
         }
-        pub fn allocate_memory(
+        fn allocate_memory(
             &self,
             address: usize,
             size: usize,
@@ -190,7 +204,7 @@ pub mod process {
             }
         }
 
-        pub fn set_protection(
+        fn set_protection(
             &self,
             memory_reg: MemoryRegion,
             protection_string: String,
